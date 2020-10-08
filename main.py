@@ -1,0 +1,94 @@
+#!/usr/bin/env python3
+
+def die(message):
+    print(message)
+    import sys
+    sys.exit(1)
+	
+from remark import Remark
+import optparse
+import json
+import getpass
+from xlrd import open_workbook
+
+try:
+    import requests
+    from requests.auth import HTTPBasicAuth
+except ImportError:
+    die("Please install restkit (in debian: python3-requests)")
+
+try:
+	from xlrd import open_workbook,empty_cell
+except ImportError:
+    die("Please install xlrd (in debian: python3-xlrd)")
+	
+# CONSTANTS
+IR_SHEET = 2
+ID_COL = 0
+AUTHOR_COL = 1
+COMMENT_COL = 1
+DECISION_COL = 1
+DECISION_COMMENT_COL = 1
+ACTION_DESCRIPTION_COL = 1
+STATUS_COL = 1
+
+def parse_args():
+	parser = optparse.OptionParser()
+	parser.add_option('-u', '--user', dest='user', default=getpass.getuser(), help='Username to access JIRA')
+	parser.add_option('-p', '--password', dest='password', help='Password to access JIRA')
+	parser.add_option('-j', '--jira', dest='jira_url', default='http://localhost:8080', help='JIRA Base URL')
+	parser.add_option('-f', '--file', dest='filename', help='Filename to write image to')
+	parser.add_option('-k', '--key', dest='key', help='Project key to jira')
+	
+	return parser.parse_args()
+
+def get_password():
+	return getpass("Please enter the Jira Password:")
+	
+def fetch_open_remarks(workbook):
+	sheet = workbook.sheet_by_index(IR_SHEET)
+	remarks = []
+	for row_index in range(sheet.nrows):
+		# Check if the remark have been accepted or postponed
+		if sheet.cell(row_index,DECISION_COL).value == 'A' or sheet.cell(row_index,DECISION_COL).value == 'P':
+			# Check if the remark is open
+			if sheet.cell(row_index,STATUS_COL).value is empty_cell:
+				remarks.append(Remark(sheet.cell(row_index,ID_COL).value,
+				sheet.cell(row_index,AUTHOR_COL).value,
+				sheet.cell(row_index,COMMENT_COL).value,
+				sheet.cell(row_index,DECISION_COL).value,
+				sheet.cell(row_index,DECISION_COMMENT_COL).value,
+				sheet.cell(row_index,ACTION_DESCRIPTION_COL).value,
+				sheet.cell(row_index,STATUS_COL).value))				
+	return remarks
+
+def create_issue(remark, auth, options):
+	request_url = options.jira_url + "/rest/api/latest/issue/"
+	payload = {"fields": {"project": {"key": options.key},"summary": remark.get_identifier}}
+	headers = {"Content-Type": "application/json"}
+	response = requests.post(url=request_url,auth=auth,headers=headers,data=json.dumps(payload))
+		
+	if response.status_code != 200:
+		die(response)
+
+if __name__ == '__main__':
+	(options, args) = parse_args()
+	
+	# Exit if no file was supplied to program
+	if not options.filename:
+		parser.error('Filename not given')
+		
+	# Exit if no project key was supplied to program
+	if not options.key:
+		parser.error('Key to JIRA not given')
+	
+	workbook = open_workbook(options.filename)
+	
+	remarks = fetch_open_remarks(workbook)
+	
+	#TODO CHANGE TO TOKEN BASED SIGN IN#
+	# Basic Auth is usually easier for scripts like this to deal with than Cookies.
+	auth = HTTPBasicAuth(options.user, options.password or get_password())
+	for remark in remarks:
+		create_issue(remark,auth,options)
+	
