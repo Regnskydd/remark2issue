@@ -8,8 +8,6 @@ def die(message):
 from remark import Remark
 import optparse
 import json
-import getpass
-from xlrd import open_workbook
 
 try:
     import requests
