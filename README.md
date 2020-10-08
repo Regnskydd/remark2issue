@@ -6,6 +6,6 @@ Export remarks from an excel sheet into issues in JIRA to better visualize, prio
 python -f workbook.xlxs -j http://localhost:8080 -k KEY
 ```
 
-#Dependencies
+# Dependencies
 https://pypi.org/project/xlrd/
 https://pypi.org/project/requests/
