@@ -13,7 +13,6 @@ from xlrd import open_workbook
 
 try:
     import requests
-    from requests.auth import HTTPBasicAuth
 except ImportError:
     die("Please install restkit (in debian: python3-requests)")
 
@@ -31,19 +30,15 @@ DECISION_COL = 1
 DECISION_COMMENT_COL = 1
 ACTION_DESCRIPTION_COL = 1
 STATUS_COL = 1
+BEARER_TOKEN = "ADD TOKEN"
 
 def parse_args():
 	parser = optparse.OptionParser()
-	parser.add_option('-u', '--user', dest='user', default=getpass.getuser(), help='Username to access JIRA')
-	parser.add_option('-p', '--password', dest='password', help='Password to access JIRA')
 	parser.add_option('-j', '--jira', dest='jira_url', default='http://localhost:8080', help='JIRA Base URL')
 	parser.add_option('-f', '--file', dest='filename', help='Filename to write image to')
 	parser.add_option('-k', '--key', dest='key', help='Project key to jira')
 	
 	return parser.parse_args()
-
-def get_password():
-	return getpass("Please enter the Jira Password:")
 	
 def fetch_open_remarks(workbook):
 	sheet = workbook.sheet_by_index(IR_SHEET)
@@ -62,10 +57,10 @@ def fetch_open_remarks(workbook):
 				sheet.cell(row_index,STATUS_COL).value))				
 	return remarks
 
-def create_issue(remark, auth, options):
+def create_issue(remark, options):
 	request_url = options.jira_url + "/rest/api/latest/issue/"
 	payload = {"fields": {"project": {"key": options.key},"summary": remark.get_identifier}}
-	headers = {"Content-Type": "application/json"}
+	headers = {"Content-Type": "application/json", 'Authorization': BEARER_TOKEN}
 	response = requests.post(url=request_url,auth=auth,headers=headers,data=json.dumps(payload))
 		
 	if response.status_code != 200:
@@ -86,9 +81,6 @@ if __name__ == '__main__':
 	
 	remarks = fetch_open_remarks(workbook)
 	
-	#TODO CHANGE TO TOKEN BASED SIGN IN#
-	# Basic Auth is usually easier for scripts like this to deal with than Cookies.
-	auth = HTTPBasicAuth(options.user, options.password or get_password())
 	for remark in remarks:
-		create_issue(remark,auth,options)
+		create_issue(remark,options)
 	
