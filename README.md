@@ -7,6 +7,6 @@ python3 main.py -f workbook.xlsx -j http://localhost:8080 -k KEY
 ```
 
 # Dependencies
-https://pypi.org/project/xlrd/
+https://pypi.org/project/openpyxl/
 
 https://pypi.org/project/requests/
