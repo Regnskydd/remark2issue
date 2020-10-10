@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 
 class Remark:
-	def __init__(self, identifier, author, comment, decision, decision_comment, action_description, status)
+	def __init__(self, identifier, author, comment, decision, decision_comment, action_description, status):
 		self.identifier = identifier
 		self.author = author
 		self.comment = comment

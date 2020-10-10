@@ -3,7 +3,7 @@ Export remarks from an excel sheet into issues in JIRA to better visualize, prio
 
 # How to run
 ```
-python -f workbook.xlxs -j http://localhost:8080 -k KEY
+python3 main.py -f workbook.xlsx -j http://localhost:8080 -k KEY
 ```
 
 # Dependencies
