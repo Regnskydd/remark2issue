@@ -85,25 +85,24 @@ def fetch_issue_status_from_jira(options,auth):
                 if action_description != None:
                     # Get the JIRA key we wrote in the cell when the issue was created
                     request_url = options.jira_url + "/rest/api/latest/issue/" + action_description.split(' ', 1)[0]
-                    #response = requests.get(url=request_url,headers=headers,data=json.dumps(payload))
                     response = requests.get(url=request_url,auth=auth,headers=headers)
                     issue = json.loads(response.content)
                     
                     if response.status_code == 200 or response.status_code == 201:
                         # We only care to update issues that are closed in JIRA
                         if issue['fields']['status']['name'] == 'Done':
-                            comments = issue['fields']['comment']['comments']
-                            if comments:
-                                # Should add support for multiple comments
-                                sheet.cell(row_index,ACTION_DESCRIPTION_COL).value = comments[0]['author']['name'] + ': ' + comments[0]['body']
-                                sheet.cell(row_index,STATUS_COL).value = 'F'
-                                #print('Update action description on row', row_index, ' from issue ', json.dumps(issue['key']))
-                                print('Update action description on row ' + str(row_index) + ' from issue ' + json.dumps(issue['key']))
-                            else:
-                                print('You should add comments to your Jira issue when closing it, now you have to manually update the excel or add a comment in jira and re-run this script')
+                            for index, comment in enumerate(issue['fields']['comment']['comments']):
+                                if index > 0:
+                                    sheet.cell(row_index,ACTION_DESCRIPTION_COL).value += '\n' + comment['author']['name'] + ': ' + comment['body']
+                                else:
+                                    sheet.cell(row_index,ACTION_DESCRIPTION_COL).value = comment['author']['name'] + ': ' + comment['body']
+                      
+                            sheet.cell(row_index,STATUS_COL).value = 'F'                       
+                            print('Update action description on row ' + str(row_index) + ' from issue ' + json.dumps(issue['key']))
                     else:
                         die(response)
-    workbook.save(options.filename)                  
+    workbook.save(options.filename)
+    
 # Writes the JIRA issue key that was created for an issue                        
 def write_issue_key_on_remark(remark,options,response):
     workbook = load_workbook(options.filename)
@@ -136,15 +135,13 @@ if __name__ == '__main__':
     # Exit if no project key was supplied to program
     if not options.key:
         parser.error('Project key to JIRA not given')
-    
+
+    # Basic Auth is usually easier for scripts like this to deal with than Cookies.
+    auth = HTTPBasicAuth(options.user, options.password or get_password())
+
     if options.issue:
-        # Basic Auth is usually easier for scripts like this to deal with than Cookies.
-        auth = HTTPBasicAuth(options.user, options.password or get_password())
-
-        workbook = load_workbook(options.filename)
-    
+        workbook = load_workbook(options.filename) 
         remarks = fetch_open_remarks(workbook)
-
         for remark in remarks:
             create_issue(remark,options,auth)
 
